@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1086707457503",
+    "project_id": "test-policia-d0ce7",
+    "storage_bucket": "test-policia-d0ce7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1086707457503:android:401090d374e456d6f0386a",
+        "android_client_info": {
+          "package_name": "com.example.test_police_app_front"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1086707457503-tt5s4suc6u8rutu54nk4i8ejanm9tr65.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.test_police_app_front",
+            "certificate_hash": "7567ca61a03541a8684dc4337daa713bcbca7d88"
+          }
+        },
+        {
+          "client_id": "1086707457503-ma3g2b74fl7cr7o9hn1ju54h0ltejbql.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCV3sHjb2ILjZaK64xj2y2yDEczpoUFCPk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1086707457503-ma3g2b74fl7cr7o9hn1ju54h0ltejbql.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
