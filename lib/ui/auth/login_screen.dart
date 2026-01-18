@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/user_api.dart';
-import '../home/home_screen.dart';
+import '../layout/main_layout.dart'; // 👈 IMPORTANTE
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -39,16 +39,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result != null) {
         final prefs = await SharedPreferences.getInstance();
+
+        final userData = result['user'];
+
+        // Leer isPremium del backend (0/1 o true/false)
+        final rawPremium = userData['isPremium'];
+        bool isPremium;
+        if (rawPremium is bool) {
+          isPremium = rawPremium;
+        } else if (rawPremium is num) {
+          isPremium = rawPremium == 1;
+        } else if (rawPremium is String) {
+          isPremium = rawPremium == '1' || rawPremium.toLowerCase() == 'true';
+        } else {
+          isPremium = false;
+        }
+
         await prefs.setString('token', result['token']);
-        await prefs.setString('userEmail', result['user']['email']);
-        await prefs.setString('userName', result['user']['name']);
+        await prefs.setString('userEmail', userData['email']);
+        await prefs.setString('userName', userData['name']);
+        await prefs.setBool('isPremium', isPremium);
 
         setState(() => message = '✅ Inicio de sesión correcto');
 
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            MaterialPageRoute(builder: (_) => const MainLayout()),
           );
         });
       } else {
@@ -61,57 +78,67 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🔹 LOGIN/REGISTRO CON GOOGLE
+
   Future<void> signInWithGoogle() async {
-  try {
-    setState(() => isLoading = true);
+    try {
+      setState(() => isLoading = true);
 
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-    if (googleUser == null) {
-      setState(() => message = 'Inicio con Google cancelado');
-      return;
-    }
-
-    final name = googleUser.displayName ?? '';
-    final email = googleUser.email;
-
-    // 1️⃣ Intentar login primero
-    var loginResult = await UserApi.loginWithGoogle(name, email);
-
-    // 2️⃣ Si no existe, registrar y luego volver a loguear
-    if (loginResult == null) {
-      final registerResult = await UserApi.registerWithGoogle(name, email);
-      if (registerResult != null) {
-        // Ahora sí, hacer login
-        loginResult = await UserApi.loginWithGoogle(name, email);
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() => message = 'Inicio con Google cancelado');
+        return;
       }
+
+      final name = googleUser.displayName ?? '';
+      final email = googleUser.email;
+
+      var loginResult = await UserApi.loginWithGoogle(name, email);
+      if (loginResult == null) {
+        final registerResult = await UserApi.registerWithGoogle(name, email);
+        if (registerResult != null) {
+          loginResult = await UserApi.loginWithGoogle(name, email);
+        }
+      }
+
+      if (loginResult != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final userData = loginResult['user'];
+
+        final rawPremium = userData['isPremium'];
+        bool isPremium;
+        if (rawPremium is bool) {
+          isPremium = rawPremium;
+        } else if (rawPremium is num) {
+          isPremium = rawPremium == 1;
+        } else if (rawPremium is String) {
+          isPremium = rawPremium == '1' || rawPremium.toLowerCase() == 'true';
+        } else {
+          isPremium = false;
+        }
+
+        await prefs.setString('token', loginResult['token']);
+        await prefs.setString('userEmail', userData['email']);
+        await prefs.setString('userName', userData['name']);
+        await prefs.setBool('isPremium', isPremium); // 👈 IMPORTANTE
+
+        setState(() => message = '✅ Sesión iniciada con Google');
+
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+          );
+        });
+      } else {
+        setState(() => message = '❌ No se pudo iniciar sesión con Google');
+      }
+    } catch (e) {
+      setState(() => message = 'Error al iniciar sesión: $e');
+    } finally {
+      setState(() => isLoading = false);
     }
-
-    // 3️⃣ Si el login fue exitoso
-    if (loginResult != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', loginResult['token']);
-      await prefs.setString('userEmail', loginResult['user']['email']);
-      await prefs.setString('userName', loginResult['user']['name']);
-
-      setState(() => message = '✅ Sesión iniciada con Google');
-
-      Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      });
-    } else {
-      setState(() => message = '❌ No se pudo iniciar sesión con Google');
-    }
-  } catch (e) {
-    setState(() => message = 'Error al iniciar sesión: $e');
-  } finally {
-    setState(() => isLoading = false);
   }
-}
+
 
   @override
   Widget build(BuildContext context) {
@@ -137,8 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(fontSize: 16, color: Colors.black54),
                 ),
                 const SizedBox(height: 40),
-
-                // Campos
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -151,8 +176,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: _inputDecoration("Contraseña"),
                 ),
                 const SizedBox(height: 24),
-
-                // Botón normal
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -174,15 +197,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // 🔹 BOTÓN GOOGLE
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: OutlinedButton.icon(
                     onPressed: isLoading ? null : signInWithGoogle,
                     icon: Image.asset(
-                      'assets/images/google-logo.png', // agrega el logo aquí
+                      'assets/images/google-logo.png',
                       height: 24,
                     ),
                     label: const Text(
@@ -198,9 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 if (message.isNotEmpty)
                   Text(
                     message,
@@ -211,6 +230,37 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
+                const SizedBox(height: 16),
+
+                // 💡 Enlace a registro
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "¿No tienes cuenta?",
+                      style: TextStyle(color: Colors.black54, fontSize: 15),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RegisterScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Regístrate",
+                        style: TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
