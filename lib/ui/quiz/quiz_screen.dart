@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart'; 
-import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:test_police_app_front/api/question_api.dart'; // 👈 USAMOS QuestionApi
+import 'package:test_police_app_front/api/stats_api.dart'; // 👈 NUEVO: StatsApi
 
 import 'quiz_review_screen.dart'; // 👈 Pantalla de revisión
 
@@ -134,6 +134,38 @@ class _QuizScreenState extends State<QuizScreen> {
         await QuestionApi.sendFailedQuestions(failedIds);
       } catch (e) {
         print('⚠️ Error enviando preguntas falladas: $e');
+      }
+    }
+
+    // ✅ Enviar estadísticas (todas las contestadas)
+    final List<Map<String, dynamic>> statsAnswers = [];
+    for (int i = 0; i < questions.length; i++) {
+      final qid = questions[i]['id'];
+      int? questionId;
+
+      if (qid is int) {
+        questionId = qid;
+      } else if (qid is String) {
+        questionId = int.tryParse(qid);
+      }
+
+      if (questionId == null) continue;
+
+      // Si no contestó, no se envía (si quieres contarlo como fallo, lo cambiamos)
+      final result = userResults[i];
+      if (result == null) continue;
+
+      statsAnswers.add({
+        'questionId': questionId,
+        'isCorrect': result == true,
+      });
+    }
+
+    if (statsAnswers.isNotEmpty) {
+      try {
+        await StatsApi.saveTestResults(statsAnswers);
+      } catch (e) {
+        print('⚠️ Error enviando estadísticas: $e');
       }
     }
 
@@ -276,8 +308,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   child: const Text('Atrás'),
                 ),
                 ElevatedButton(
-                  onPressed:
-                      selectedIndex != null && !answered ? checkAnswer : null,
+                  onPressed: selectedIndex != null && !answered ? checkAnswer : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
                     foregroundColor: selectedIndex != null ? Colors.white : Colors.black,
@@ -291,9 +322,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     foregroundColor: Colors.white,
                   ),
                   child: Text(
-                    currentIndex < questions.length - 1
-                        ? 'Siguiente'
-                        : 'Finalizar',
+                    currentIndex < questions.length - 1 ? 'Siguiente' : 'Finalizar',
                   ),
                 ),
               ],
